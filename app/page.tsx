@@ -33,6 +33,8 @@ export default function Home() {
   const [error, setError] = useState("");
   const [result, setResult] = useState<Result | null>(null);
   const [copied, setCopied] = useState(false);
+  const [refining, setRefining] = useState(false);
+  const [customRefine, setCustomRefine] = useState("");
   const resultRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -121,6 +123,26 @@ export default function Home() {
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 1600);
+  }
+
+  async function refine(instruction: string) {
+    if (!result || refining) return;
+    setRefining(true);
+    setError("");
+    try {
+      const res = await fetch("/api/refine", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ draft: result.message, instruction }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Couldn't refine.");
+      setResult({ ...result, message: data.message });
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setRefining(false);
+    }
   }
 
   const scores = result?.ranking.map((r) => r.score) ?? [];
@@ -278,6 +300,35 @@ export default function Home() {
           {result.mode === "outreach" && result.message && (
             <div className="draft-wrap">
               <div className="draft">{result.message}</div>
+              <div className="refine-bar">
+                <span className="refine-label">Refine:</span>
+                {["Shorter", "Warmer", "More specific", "Less formal"].map((chip) => (
+                  <button
+                    key={chip}
+                    className="refine-chip"
+                    onClick={() => refine(chip.toLowerCase())}
+                    disabled={refining}
+                  >
+                    {chip}
+                  </button>
+                ))}
+                <div className="refine-custom">
+                  <input
+                    type="text"
+                    placeholder="or tell it what to change…"
+                    value={customRefine}
+                    onChange={(e) => setCustomRefine(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && customRefine.trim()) {
+                        refine(customRefine.trim());
+                        setCustomRefine("");
+                      }
+                    }}
+                    disabled={refining}
+                  />
+                </div>
+                {refining && <span className="refine-status">refining…</span>}
+              </div>
               <div className="draft-actions">
                 <Link href="/dashboard" className="ghost-link">Saved to dashboard →</Link>
                 <button className="copy" onClick={() => copyText(result.message!)}>

@@ -450,3 +450,20 @@ textarea:focus, input:focus {
   background: var(--paper); border: 1px solid var(--line); border-radius: 12px;
   padding: 14px 16px; font-size: 14px; line-height: 1.6; color: var(--ink); margin: 0;
 }
+
+/* ---------- Refine bar ---------- */
+.refine-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line-soft);
+}
+.refine-label { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint); }
+.refine-chip {
+  font-family: var(--sans); font-size: 12.5px; font-weight: 500;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink-soft);
+  border-radius: 999px; padding: 5px 13px; cursor: pointer; transition: all 0.12s ease;
+}
+.refine-chip:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.refine-chip:disabled { opacity: 0.5; cursor: default; }
+.refine-custom { flex: 1; min-width: 160px; }
+.refine-custom input { font-size: 13px; padding: 7px 11px; border-radius: 9px; }
+.refine-status { font-family: var(--mono); font-size: 11.5px; color: var(--accent); }
