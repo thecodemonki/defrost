@@ -2,10 +2,16 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { saveGeneration } from "@/lib/history";
+import { saveGeneration, prepToText, Prep } from "@/lib/history";
 
 type Ranking = { name: string; score: number };
-type Result = { message: string; matchedProject: string; ranking: Ranking[] };
+type Result = {
+  mode: "outreach" | "coffee";
+  message?: string;
+  prep?: Prep;
+  matchedProject: string;
+  ranking: Ranking[];
+};
 
 const PIPELINE = [
   { label: "screenshot", kind: "data" },
@@ -20,6 +26,7 @@ export default function Home() {
   const [companyText, setCompanyText] = useState("");
   const [recipientName, setRecipientName] = useState("");
   const [channel, setChannel] = useState<"email" | "linkedin">("email");
+  const [mode, setMode] = useState<"outreach" | "coffee">("outreach");
   const [loading, setLoading] = useState(false);
   const [reading, setReading] = useState(false);
   const [error, setError] = useState("");
@@ -84,18 +91,22 @@ export default function Home() {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyText, channel, recipientName }),
+        body: JSON.stringify({ companyText, channel, recipientName, mode }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Request failed");
       setResult(data);
+      const messageForHistory =
+        data.mode === "coffee" && data.prep ? prepToText(data.prep) : data.message || "";
       saveGeneration({
+        mode: data.mode,
         companyText,
         recipientName,
         channel,
         matchedProject: data.matchedProject,
         ranking: data.ranking,
-        message: data.message,
+        message: messageForHistory,
+        prep: data.prep,
       });
     } catch (e: any) {
       setError(e.message);
@@ -104,9 +115,8 @@ export default function Home() {
     }
   }
 
-  function copy() {
-    if (!result) return;
-    navigator.clipboard.writeText(result.message);
+  function copyText(text: string) {
+    navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 1600);
   }
@@ -121,12 +131,12 @@ export default function Home() {
       <header className="masthead">
         <h1>
           Match the company.<br />
-          <span className="h1-accent">Draft the message.</span>
+          <span className="h1-accent">{mode === "coffee" ? "Prep the chat." : "Draft the message."}</span>
         </h1>
         <p className="lede">
           Paste a company&apos;s About page, a role description, or a screenshot. Embed v4 scores
-          it against my real projects and picks the most relevant one. Chat drafts the outreach in
-          my actual voice.
+          it against my real projects and picks the most relevant one. Chat then{" "}
+          {mode === "coffee" ? "preps me for a coffee chat" : "drafts the outreach"} in my actual voice.
         </p>
 
         <div className="pipeline" aria-label="How it works">
@@ -138,6 +148,16 @@ export default function Home() {
           ))}
         </div>
       </header>
+
+      {/* MODE TOGGLE */}
+      <div className="mode-toggle" role="group" aria-label="Mode">
+        <button data-on={mode === "outreach"} onClick={() => setMode("outreach")}>
+          ✉ Cold outreach
+        </button>
+        <button data-on={mode === "coffee"} onClick={() => setMode("coffee")}>
+          ☕ Coffee chat
+        </button>
+      </div>
 
       {/* INPUT */}
       <section className="card">
@@ -182,16 +202,20 @@ export default function Home() {
         </div>
 
         <div className="field-row">
-          <div className="toggle" role="group" aria-label="Channel">
-            <button data-on={channel === "email"} onClick={() => setChannel("email")}>Email</button>
-            <button data-on={channel === "linkedin"} onClick={() => setChannel("linkedin")}>LinkedIn</button>
-          </div>
+          {mode === "outreach" && (
+            <div className="toggle" role="group" aria-label="Channel">
+              <button data-on={channel === "email"} onClick={() => setChannel("email")}>Email</button>
+              <button data-on={channel === "linkedin"} onClick={() => setChannel("linkedin")}>LinkedIn</button>
+            </div>
+          )}
           <button
             className="go"
             onClick={generate}
             disabled={loading || reading || companyText.trim().length < 20}
           >
-            {loading ? "Matching + drafting…" : "Generate outreach"}
+            {loading
+              ? mode === "coffee" ? "Matching + prepping…" : "Matching + drafting…"
+              : mode === "coffee" ? "Prep coffee chat" : "Generate outreach"}
           </button>
         </div>
       </section>
@@ -202,7 +226,9 @@ export default function Home() {
           <span className="dot" />
           <span className="dot" style={{ animationDelay: "0.15s" }} />
           <span className="dot" style={{ animationDelay: "0.3s" }} />
-          <span className="loading-text">embedding → ranking → generating</span>
+          <span className="loading-text">
+            {mode === "coffee" ? "embedding → ranking → prepping" : "embedding → ranking → generating"}
+          </span>
         </div>
       )}
 
@@ -213,7 +239,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* RESULT — slides in below */}
+      {/* RESULT */}
       {result && (
         <section className="card result-card" ref={resultRef}>
           <div className="match-head">
@@ -235,13 +261,52 @@ export default function Home() {
             ))}
           </div>
 
-          <div className="draft-wrap">
-            <div className="draft">{result.message}</div>
-            <div className="draft-actions">
-              <Link href="/dashboard" className="ghost-link">Saved to dashboard →</Link>
-              <button className="copy" onClick={copy}>{copied ? "Copied ✓" : "Copy draft"}</button>
+          {/* OUTREACH OUTPUT */}
+          {result.mode === "outreach" && result.message && (
+            <div className="draft-wrap">
+              <div className="draft">{result.message}</div>
+              <div className="draft-actions">
+                <Link href="/dashboard" className="ghost-link">Saved to dashboard →</Link>
+                <button className="copy" onClick={() => copyText(result.message!)}>
+                  {copied ? "Copied ✓" : "Copy draft"}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* COFFEE CHAT OUTPUT */}
+          {result.mode === "coffee" && result.prep && (
+            <div className="draft-wrap">
+              {result.prep.opener && (
+                <div className="prep-block">
+                  <h3 className="prep-label">Opener</h3>
+                  <div className="draft">{result.prep.opener}</div>
+                </div>
+              )}
+              {result.prep.talkingPoints?.length > 0 && (
+                <div className="prep-block">
+                  <h3 className="prep-label">Talking points</h3>
+                  <ul className="prep-list">
+                    {result.prep.talkingPoints.map((t, i) => <li key={i}>{t}</li>)}
+                  </ul>
+                </div>
+              )}
+              {result.prep.questions?.length > 0 && (
+                <div className="prep-block">
+                  <h3 className="prep-label">Questions to ask</h3>
+                  <ul className="prep-list questions">
+                    {result.prep.questions.map((q, i) => <li key={i}>{q}</li>)}
+                  </ul>
+                </div>
+              )}
+              <div className="draft-actions">
+                <Link href="/dashboard" className="ghost-link">Saved to dashboard →</Link>
+                <button className="copy" onClick={() => copyText(prepToText(result.prep!))}>
+                  {copied ? "Copied ✓" : "Copy prep"}
+                </button>
+              </div>
+            </div>
+          )}
         </section>
       )}
 

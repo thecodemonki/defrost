@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   try {
-    const { companyText, channel, recipientName } = await req.json();
+    const { companyText, channel, recipientName, mode = "outreach" } = await req.json();
 
     if (!companyText || typeof companyText !== "string" || companyText.trim().length < 20) {
       return NextResponse.json(
@@ -18,7 +18,6 @@ export async function POST(req: NextRequest) {
     }
 
     // 1) EMBED — match the company against the project corpus.
-    //    Query = company text; documents = the project descriptions.
     const [[companyVec], projectVecs] = await Promise.all([
       embed([companyText], "search_query"),
       embed(PROJECTS.map((p) => p.embedText), "search_document"),
@@ -30,13 +29,60 @@ export async function POST(req: NextRequest) {
     })).sort((a, b) => b.score - a.score);
 
     const best = ranked[0].project;
+    const rankingOut = ranked.map((r) => ({ name: r.project.name, score: r.score }));
 
-    // 2) CHAT — draft the message in Maxwell's voice, told to feature the matched project.
     const fewShot = FEW_SHOT_EXAMPLES.map(
-      (ex) =>
-        `--- EXAMPLE (${ex.channel}) ---\nContext: ${ex.company}\nMessage:\n${ex.message}`
+      (ex) => `--- EXAMPLE (${ex.channel}) ---\nContext: ${ex.company}\nMessage:\n${ex.message}`
     ).join("\n\n");
 
+    // ---------- COFFEE CHAT MODE ----------
+    if (mode === "coffee") {
+      const system = `You are prepping Maxwell Peng for a coffee chat / informal call with someone at a company he's interested in. Here is who Maxwell is:
+
+${PROFILE}
+
+TONE: ${VOICE_RULES}
+
+Your job: produce genuinely useful prep that connects Maxwell's most relevant project to what this company does, so the conversation feels specific and curious — not like an interview.
+
+Return ONLY valid JSON (no markdown, no code fences) with exactly this shape:
+{
+  "talkingPoints": ["3 short, specific things Maxwell can bring up that bridge his matched project to their work. Concrete, technical where it helps, not generic."],
+  "questions": ["3 thoughtful questions to ask them — genuine curiosity about their product, tech, or team. Not softball, not interview-y."],
+  "opener": "A short, warm 2-3 sentence message to request or open the chat, in Maxwell's voice."
+}`;
+
+      const user = `Company / role description:
+"""
+${companyText.trim()}
+"""
+
+${recipientName ? `The person is named ${recipientName}.` : "No name given."}
+
+Maxwell's most relevant project for this company (chosen by semantic match) is:
+${best.pitchLine}
+
+Anchor the talking points to that project. Return the JSON now.`;
+
+      const raw = await chat(system, user);
+      const cleaned = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
+
+      let prep;
+      try {
+        prep = JSON.parse(cleaned);
+      } catch {
+        prep = { talkingPoints: [], questions: [], opener: cleaned };
+      }
+
+      return NextResponse.json({
+        mode: "coffee",
+        prep,
+        matchedProject: best.name,
+        ranking: rankingOut,
+      });
+    }
+
+    // ---------- COLD OUTREACH MODE (default) ----------
     const system = `You write cold outreach for Maxwell Peng to companies he wants to work for.
 You write ONLY in his voice. Here is who he is:
 
@@ -67,13 +113,14 @@ Weave that project in naturally as the proof point. Draft the ${channel === "ema
     const message = await chat(system, user);
 
     return NextResponse.json({
+      mode: "outreach",
       message,
       matchedProject: best.name,
-      ranking: ranked.map((r) => ({ name: r.project.name, score: r.score })),
+      ranking: rankingOut,
     });
   } catch (err: any) {
     return NextResponse.json(
-      { error: err?.message ?? "Something went wrong generating the message." },
+      { error: err?.message ?? "Something went wrong generating." },
       { status: 500 }
     );
   }

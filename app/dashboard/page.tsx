@@ -74,7 +74,9 @@ export default function Dashboard() {
               <div className="hist-card card" key={g.id}>
                 <div className="hist-top">
                   <span className="chip sm">{g.matchedProject}</span>
-                  <span className="hist-meta">{g.channel} · {timeAgo(g.createdAt)}</span>
+                  <span className="hist-meta">
+                    {g.mode === "coffee" ? "☕ coffee chat" : `✉ ${g.channel}`} · {timeAgo(g.createdAt)}
+                  </span>
                 </div>
                 <p className="hist-company">{g.companyText.slice(0, 140)}{g.companyText.length > 140 ? "…" : ""}</p>
                 <div className="draft">{g.message}</div>
