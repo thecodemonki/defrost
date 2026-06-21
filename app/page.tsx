@@ -202,6 +202,26 @@ export default function Home() {
 
       {/* INPUT */}
       <section className="card">
+        <div className="card-header">
+          <h2 className="card-title">
+            {mode === "coffee" ? "☕ Coffee chat" : "✉ Cold outreach"}
+          </h2>
+          {mode !== "coffee" && templates.filter((t) => t.channel === channel).length > 0 && (
+            <div className="tpl-picker">
+              <select
+                className="tpl-select-sm"
+                value={selectedTemplate}
+                onChange={(e) => setSelectedTemplate(e.target.value)}
+              >
+                <option value="">No template</option>
+                {templates.filter((t) => t.channel === channel).map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+
         <div className="field">
           <label htmlFor="rn">Recipient name <span className="opt">optional</span></label>
           <input
@@ -210,6 +230,17 @@ export default function Home() {
             placeholder="e.g. Aidan"
             value={recipientName}
             onChange={(e) => setRecipientName(e.target.value)}
+          />
+        </div>
+
+        <div className="field">
+          <label htmlFor="intent">What do you want from this? <span className="opt">optional</span></label>
+          <input
+            id="intent"
+            type="text"
+            placeholder="e.g. a 15-min intro call · a referral · feedback on my portfolio"
+            value={intent}
+            onChange={(e) => setIntent(e.target.value)}
           />
         </div>
 
@@ -241,33 +272,6 @@ export default function Home() {
           />
           {reading && <p className="reading-note">command-a-vision is reading the screenshot…</p>}
         </div>
-
-        <div className="field">
-          <label htmlFor="intent">What do you want from this? <span className="opt">optional</span></label>
-          <input
-            id="intent"
-            type="text"
-            placeholder="e.g. a 15-min intro call · a referral · feedback on my portfolio"
-            value={intent}
-            onChange={(e) => setIntent(e.target.value)}
-          />
-        </div>
-
-        {mode !== "coffee" && templates.filter((t) => t.channel === channel).length > 0 && (
-          <div className="field">
-            <label>Template <span className="opt">optional</span></label>
-            <select
-              className="tpl-select"
-              value={selectedTemplate}
-              onChange={(e) => setSelectedTemplate(e.target.value)}
-            >
-              <option value="">None — free-form</option>
-              {templates.filter((t) => t.channel === channel).map((t) => (
-                <option key={t.id} value={t.id}>{t.name}</option>
-              ))}
-            </select>
-          </div>
-        )}
 
         <div className="field-row">
           {mode === "outreach" && (

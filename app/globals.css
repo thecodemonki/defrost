@@ -512,3 +512,21 @@ textarea:focus, input:focus {
   background-repeat: no-repeat; background-position: right 14px center;
 }
 .tpl-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+/* ---------- Card header with template picker ---------- */
+.card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 18px; gap: 12px;
+}
+.card-title {
+  font-size: 14px; font-weight: 600; color: var(--ink); margin: 0;
+}
+.tpl-picker { flex-shrink: 0; }
+.tpl-select-sm {
+  font-family: var(--mono); font-size: 12px; color: var(--ink-soft);
+  background: var(--paper); border: 1px solid var(--line); border-radius: 8px;
+  padding: 6px 28px 6px 10px; cursor: pointer; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238a8794' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 9px center;
+}
+.tpl-select-sm:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
