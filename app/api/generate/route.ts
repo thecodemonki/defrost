@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   try {
-    const { companyText, channel, recipientName, mode = "outreach" } = await req.json();
+    const { companyText, channel, recipientName, intent, mode = "outreach" } = await req.json();
 
     if (!companyText || typeof companyText !== "string" || companyText.trim().length < 20) {
       return NextResponse.json(
@@ -58,6 +58,7 @@ ${companyText.trim()}
 """
 
 ${recipientName ? `The person is named ${recipientName}.` : "No name given."}
+${intent ? `The person wants: ${intent}. Orient the opener and questions toward that.` : ""}
 
 Maxwell's most relevant project for this company (chosen by semantic match) is:
 ${best.pitchLine}
@@ -104,6 +105,7 @@ ${companyText.trim()}
 """
 
 ${recipientName ? `Address it to: ${recipientName}.` : "Don't invent a name; open generally if none is given."}
+${intent ? `The goal of this message is: ${intent}. Make sure the message works toward that specific ask, with one clear call to action.` : "End with one clear, low-friction call to action."}
 
 The most relevant project to mention (chosen by semantic match against this company) is:
 ${best.pitchLine}

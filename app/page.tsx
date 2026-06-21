@@ -26,6 +26,7 @@ export default function Home() {
   const [companyText, setCompanyText] = useState("");
   const [recipientName, setRecipientName] = useState("");
   const [channel, setChannel] = useState<"email" | "linkedin">("email");
+  const [intent, setIntent] = useState("");
   const [mode, setMode] = useState<"outreach" | "coffee">("outreach");
   const [loading, setLoading] = useState(false);
   const [reading, setReading] = useState(false);
@@ -91,7 +92,7 @@ export default function Home() {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyText, channel, recipientName, mode }),
+        body: JSON.stringify({ companyText, channel, recipientName, intent, mode }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Request failed");
@@ -103,6 +104,7 @@ export default function Home() {
         companyText,
         recipientName,
         channel,
+        intent,
         matchedProject: data.matchedProject,
         ranking: data.ranking,
         message: messageForHistory,
@@ -199,6 +201,17 @@ export default function Home() {
             onPaste={onPaste}
           />
           {reading && <p className="reading-note">command-a-vision is reading the screenshot…</p>}
+        </div>
+
+        <div className="field">
+          <label htmlFor="intent">What do you want from this? <span className="opt">optional</span></label>
+          <input
+            id="intent"
+            type="text"
+            placeholder="e.g. a 15-min intro call · a referral · feedback on my portfolio"
+            value={intent}
+            onChange={(e) => setIntent(e.target.value)}
+          />
         </div>
 
         <div className="field-row">

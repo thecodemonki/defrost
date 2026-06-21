@@ -14,6 +14,7 @@ export type Generation = {
   ranking: { name: string; score: number }[];
   message: string; // outreach draft, or a flattened text version of coffee prep (for copy)
   prep?: Prep;      // structured coffee-chat prep, when mode === "coffee"
+  intent?: string;
 };
 
 const KEY = "defrost:history";
