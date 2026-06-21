@@ -352,3 +352,26 @@ textarea:focus, input:focus {
   .bar-fill, .result-card { transition: none; animation: none; }
   .dot { animation: none; }
 }
+
+/* ---------- Screenshot input ---------- */
+.label-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.snap-btn {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: border-color 0.12s ease;
+}
+.snap-btn:hover { border-color: var(--accent); }
+.snap-btn:disabled { opacity: 0.6; cursor: default; }
+.reading-note {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--accent);
+  margin: 8px 0 0;
+}

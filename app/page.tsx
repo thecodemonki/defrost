@@ -8,7 +8,8 @@ type Ranking = { name: string; score: number };
 type Result = { message: string; matchedProject: string; ranking: Ranking[] };
 
 const PIPELINE = [
-  { label: "company text", kind: "data" },
+  { label: "screenshot", kind: "data" },
+  { label: "command-a-vision", kind: "model" },
   { label: "embed v4", kind: "model" },
   { label: "cosine match", kind: "op" },
   { label: "command-a", kind: "model" },
@@ -20,16 +21,59 @@ export default function Home() {
   const [recipientName, setRecipientName] = useState("");
   const [channel, setChannel] = useState<"email" | "linkedin">("email");
   const [loading, setLoading] = useState(false);
+  const [reading, setReading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<Result | null>(null);
   const [copied, setCopied] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (result && resultRef.current) {
       resultRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }, [result]);
+
+  function fileToDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result as string);
+      r.onerror = () => reject(new Error("Couldn't read that file."));
+      r.readAsDataURL(file);
+    });
+  }
+
+  async function readScreenshot(file: File) {
+    if (!file.type.startsWith("image/")) return;
+    setReading(true);
+    setError("");
+    try {
+      const imageDataUrl = await fileToDataUrl(file);
+      const res = await fetch("/api/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageDataUrl }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Couldn't read the screenshot.");
+      setCompanyText(data.text);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setReading(false);
+    }
+  }
+
+  function onPaste(e: React.ClipboardEvent) {
+    const img = Array.from(e.clipboardData.items).find((i) => i.type.startsWith("image/"));
+    if (img) {
+      const file = img.getAsFile();
+      if (file) {
+        e.preventDefault();
+        readScreenshot(file);
+      }
+    }
+  }
 
   async function generate() {
     setLoading(true);
@@ -80,9 +124,9 @@ export default function Home() {
           <span className="h1-accent">Draft the message.</span>
         </h1>
         <p className="lede">
-          Paste a company&apos;s About page or a role description. Embed v4 scores it against my
-          real projects and picks the most relevant one. Chat drafts the outreach in my actual
-          voice.
+          Paste a company&apos;s About page, a role description, or a screenshot. Embed v4 scores
+          it against my real projects and picks the most relevant one. Chat drafts the outreach in
+          my actual voice.
         </p>
 
         <div className="pipeline" aria-label="How it works">
@@ -95,6 +139,7 @@ export default function Home() {
         </div>
       </header>
 
+      {/* INPUT */}
       <section className="card">
         <div className="field">
           <label htmlFor="rn">Recipient name <span className="opt">optional</span></label>
@@ -108,13 +153,32 @@ export default function Home() {
         </div>
 
         <div className="field">
-          <label htmlFor="ct">Company About page / role description</label>
+          <div className="label-row">
+            <label htmlFor="ct">Company About page / role description</label>
+            <button
+              type="button"
+              className="snap-btn"
+              onClick={() => fileRef.current?.click()}
+              disabled={reading}
+            >
+              {reading ? "Reading…" : "↑ Read from screenshot"}
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => e.target.files?.[0] && readScreenshot(e.target.files[0])}
+            />
+          </div>
           <textarea
             id="ct"
-            placeholder="Paste it here. e.g. 'We're building real-time payments infrastructure for marketplaces…'"
+            placeholder="Paste text here — or paste a screenshot directly and command-a-vision will read it."
             value={companyText}
             onChange={(e) => setCompanyText(e.target.value)}
+            onPaste={onPaste}
           />
+          {reading && <p className="reading-note">command-a-vision is reading the screenshot…</p>}
         </div>
 
         <div className="field-row">
@@ -125,13 +189,14 @@ export default function Home() {
           <button
             className="go"
             onClick={generate}
-            disabled={loading || companyText.trim().length < 20}
+            disabled={loading || reading || companyText.trim().length < 20}
           >
             {loading ? "Matching + drafting…" : "Generate outreach"}
           </button>
         </div>
       </section>
 
+      {/* LOADING */}
       {loading && (
         <div className="loading card">
           <span className="dot" />
@@ -141,12 +206,14 @@ export default function Home() {
         </div>
       )}
 
+      {/* ERROR */}
       {error && (
         <div className="err card">
-          <strong>Couldn&apos;t generate.</strong> {error}
+          <strong>Something went wrong.</strong> {error}
         </div>
       )}
 
+      {/* RESULT — slides in below */}
       {result && (
         <section className="card result-card" ref={resultRef}>
           <div className="match-head">
@@ -179,7 +246,7 @@ export default function Home() {
       )}
 
       <footer className="foot">
-        <span>Cohere Embed v4 + command-a</span>
+        <span>Cohere Vision + Embed v4 + command-a</span>
         <span className="foot-sep">·</span>
         <span>Next.js</span>
         <span className="foot-sep">·</span>

@@ -72,3 +72,40 @@ export async function chat(system: string, user: string): Promise<string> {
   const text = data?.message?.content?.find((b: any) => b.type === "text")?.text;
   return (text ?? "").trim();
 }
+
+// ---- Vision: read a company screenshot into plain text ----
+// Uses command-a-vision-07-2025 (the text-only command-a can't take images).
+// Free on trial keys, up to 20 req/min.
+const VISION_MODEL = "command-a-vision-07-2025";
+
+export async function extractCompanyText(imageDataUrl: string): Promise<string> {
+  const res = await fetch(`${COHERE_BASE}/chat`, {
+    method: "POST",
+    headers: headers(),
+    body: JSON.stringify({
+      model: VISION_MODEL,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text:
+                "This is a screenshot of a company's website or LinkedIn page. Read it and write a clean plain-text description of what the company does: their mission, product, and focus. Output only that description as one or two paragraphs — no preamble, no markdown, no commentary.",
+            },
+            { type: "image_url", image_url: { url: imageDataUrl } },
+          ],
+        },
+      ],
+    }),
+  });
+
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`Cohere vision failed (${res.status}): ${detail}`);
+  }
+
+  const data = await res.json();
+  const text = data?.message?.content?.find((b: any) => b.type === "text")?.text;
+  return (text ?? "").trim();
+}
