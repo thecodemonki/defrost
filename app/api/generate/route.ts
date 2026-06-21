@@ -20,7 +20,7 @@ function profileBlock(profile?: { name?: string; summary?: string; links?: strin
 
 export async function POST(req: NextRequest) {
   try {
-    const { companyText, channel, recipientName, intent, mode = "outreach", profile } = await req.json();
+    const { companyText, channel, recipientName, intent, mode = "outreach", profile, templateStructure } = await req.json();
 
     if (!companyText || typeof companyText !== "string" || companyText.trim().length < 20) {
       return NextResponse.json(
@@ -121,6 +121,9 @@ ${companyText.trim()}
 
 ${recipientName ? `Address it to: ${recipientName}.` : "Don't invent a name; open generally if none is given."}
 ${intent ? `The goal of this message is: ${intent}. Make sure the message works toward that specific ask, with one clear call to action.` : "End with one clear, low-friction call to action."}
+${templateStructure
+  ? `STRUCTURAL GUIDE (follow this structure for the message):\n${templateStructure}\n\nFollow this structure while keeping the voice natural.`
+  : ""}
 
 The most relevant project to mention (chosen by semantic match against this company) is:
 ${best.pitchLine}

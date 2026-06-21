@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { saveGeneration, prepToText, Prep } from "@/lib/history";
 import { loadProfile } from "@/lib/profile";
+import { loadTemplates, Template } from "@/lib/templates";
 
 type Ranking = { name: string; score: number };
 type Result = {
@@ -28,6 +29,8 @@ export default function Home() {
   const [recipientName, setRecipientName] = useState("");
   const [channel, setChannel] = useState<"email" | "linkedin">("email");
   const [intent, setIntent] = useState("");
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState("");
   const [mode, setMode] = useState<"outreach" | "coffee">("outreach");
   const [loading, setLoading] = useState(false);
   const [reading, setReading] = useState(false);
@@ -44,6 +47,10 @@ export default function Home() {
       resultRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }, [result]);
+
+  useEffect(() => setTemplates(loadTemplates()), []);
+
+  useEffect(() => setSelectedTemplate(""), [channel]);
 
   function fileToDataUrl(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -92,10 +99,19 @@ export default function Home() {
     setResult(null);
     setCopied(false);
     try {
+      const tpl = templates.find((t) => t.id === selectedTemplate);
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyText, channel, recipientName, intent, mode, profile: loadProfile() }),
+        body: JSON.stringify({
+          companyText,
+          channel,
+          recipientName,
+          intent,
+          mode,
+          profile: loadProfile(),
+          templateStructure: tpl?.structure || "",
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Request failed");
@@ -236,6 +252,22 @@ export default function Home() {
             onChange={(e) => setIntent(e.target.value)}
           />
         </div>
+
+        {mode !== "coffee" && templates.filter((t) => t.channel === channel).length > 0 && (
+          <div className="field">
+            <label>Template <span className="opt">optional</span></label>
+            <select
+              className="tpl-select"
+              value={selectedTemplate}
+              onChange={(e) => setSelectedTemplate(e.target.value)}
+            >
+              <option value="">None — free-form</option>
+              {templates.filter((t) => t.channel === channel).map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="field-row">
           {mode === "outreach" && (
