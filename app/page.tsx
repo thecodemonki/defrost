@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { saveGeneration, prepToText, Prep } from "@/lib/history";
+import { loadProfile } from "@/lib/profile";
 
 type Ranking = { name: string; score: number };
 type Result = {
@@ -94,7 +95,7 @@ export default function Home() {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyText, channel, recipientName, intent, mode }),
+        body: JSON.stringify({ companyText, channel, recipientName, intent, mode, profile: loadProfile() }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Request failed");

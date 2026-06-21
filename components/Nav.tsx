@@ -11,6 +11,7 @@ export default function Nav() {
       <div className="nav-links">
         <Link href="/" data-active={path === "/"}>Generate</Link>
         <Link href="/dashboard" data-active={path === "/dashboard"}>Dashboard</Link>
+        <Link href="/profile" data-active={path === "/profile"}>Profile</Link>
       </div>
     </nav>
   );
