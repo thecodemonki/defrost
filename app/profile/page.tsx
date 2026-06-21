@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { loadProfile, saveProfile, clearProfile } from "@/lib/profile";
 
 export default function ProfilePage() {
@@ -9,13 +9,40 @@ export default function ProfilePage() {
   const [summary, setSummary] = useState("");
   const [links, setLinks] = useState("");
   const [distilling, setDistilling] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const p = loadProfile();
     if (p) { setRaw(p.raw); setName(p.name); setSummary(p.summary); setLinks(p.links); }
   }, []);
+
+  async function uploadResume(file: File) {
+    const fileName = file.name.toLowerCase();
+    if (!fileName.endsWith(".pdf") && !fileName.endsWith(".docx")) {
+      setError("Upload a PDF or .docx file.");
+      return;
+    }
+    setUploading(true);
+    setError("");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/profile", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Couldn't read the file.");
+      setName(data.name || "");
+      setSummary(data.summary || "");
+      setLinks(data.links || "");
+      if (data.raw) setRaw(data.raw);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setUploading(false);
+    }
+  }
 
   async function distill() {
     setDistilling(true);
@@ -57,6 +84,28 @@ export default function ProfilePage() {
       </header>
 
       <section className="card">
+        <div
+          className="dropzone"
+          onClick={() => fileRef.current?.click()}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            const f = e.dataTransfer.files?.[0];
+            if (f) uploadResume(f);
+          }}
+          data-busy={uploading}
+        >
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".pdf,.docx"
+            hidden
+            onChange={(e) => e.target.files?.[0] && uploadResume(e.target.files[0])}
+          />
+          <span className="dropzone-title">{uploading ? "Reading your resume…" : "Drop your resume here"}</span>
+          <span className="dropzone-sub">PDF or .docx · or click to browse · or paste below</span>
+        </div>
+
         <div className="field">
           <label htmlFor="resume">Resume / background</label>
           <textarea

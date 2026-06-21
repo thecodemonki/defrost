@@ -3,11 +3,52 @@ import { chat } from "@/lib/cohere";
 
 export const runtime = "nodejs";
 
+async function extractText(req: NextRequest): Promise<string> {
+  const contentType = req.headers.get("content-type") || "";
+
+  // File upload path
+  if (contentType.includes("multipart/form-data")) {
+    const form = await req.formData();
+    const file = form.get("file") as File | null;
+    if (!file) throw new Error("No file uploaded.");
+
+    const buf = Buffer.from(await file.arrayBuffer());
+    const name = file.name.toLowerCase();
+
+    if (name.endsWith(".pdf")) {
+      const { PDFParse } = await import("pdf-parse");
+      const parser = new PDFParse({ data: buf });
+      const result = await parser.getText();
+      await parser.destroy();
+      return result.text || "";
+    }
+    if (name.endsWith(".docx")) {
+      const mammoth = await import("mammoth");
+      const data = await mammoth.extractRawText({ buffer: buf });
+      return data.value || "";
+    }
+    throw new Error("Unsupported file type. Upload a PDF or .docx.");
+  }
+
+  // Pasted-text path (unchanged behaviour)
+  const body = await req.json();
+  return typeof body.resume === "string" ? body.resume : "";
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { resume } = await req.json();
-    if (!resume || typeof resume !== "string" || resume.trim().length < 30) {
-      return NextResponse.json({ error: "Paste a bit more of your resume." }, { status: 400 });
+    let resume = "";
+    try {
+      resume = await extractText(req);
+    } catch (e: any) {
+      return NextResponse.json({ error: e.message || "Couldn't read the file." }, { status: 400 });
+    }
+
+    if (!resume || resume.trim().length < 30) {
+      return NextResponse.json(
+        { error: "Couldn't get enough text from that. Try pasting it instead — the file may be a scanned image with no text layer." },
+        { status: 422 }
+      );
     }
 
     const system =
@@ -28,7 +69,7 @@ export async function POST(req: NextRequest) {
       parsed = { name: "", summary: cleaned, links: "" };
     }
 
-    return NextResponse.json(parsed);
+    return NextResponse.json({ ...parsed, raw: resume.trim() });
   } catch (err: any) {
     return NextResponse.json({ error: err?.message ?? "Couldn't process resume." }, { status: 500 });
   }

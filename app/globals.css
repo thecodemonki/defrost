@@ -467,3 +467,15 @@ textarea:focus, input:focus {
 .refine-custom { flex: 1; min-width: 160px; }
 .refine-custom input { font-size: 13px; padding: 7px 11px; border-radius: 9px; }
 .refine-status { font-family: var(--mono); font-size: 11.5px; color: var(--accent); }
+
+/* ---------- Resume dropzone ---------- */
+.dropzone {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+  text-align: center; padding: 28px 20px; margin-bottom: 18px;
+  border: 1.5px dashed var(--line); border-radius: 12px; background: var(--paper);
+  cursor: pointer; transition: border-color 0.15s ease, background 0.15s ease;
+}
+.dropzone:hover { border-color: var(--accent); background: var(--accent-soft); }
+.dropzone[data-busy="true"] { border-color: var(--accent); pointer-events: none; opacity: 0.8; }
+.dropzone-title { font-size: 14.5px; font-weight: 600; color: var(--ink); }
+.dropzone-sub { font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint); }
