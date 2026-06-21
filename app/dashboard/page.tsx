@@ -2,7 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { loadHistory, clearHistory, prepToText, Generation } from "@/lib/history";
+import {
+  loadHistory,
+  clearHistory,
+  markAsSent,
+  cycleStatus,
+  deleteEntry,
+  prepToText,
+  Generation,
+} from "@/lib/history";
 
 function timeAgo(ts: number) {
   const s = Math.floor((Date.now() - ts) / 1000);
@@ -12,19 +20,29 @@ function timeAgo(ts: number) {
   return `${Math.floor(s / 86400)}d ago`;
 }
 
+function formatDate(ts: number) {
+  return new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+const STATUS_LABELS: Record<string, { label: string; emoji: string }> = {
+  sent: { label: "Sent", emoji: "📤" },
+  replied: { label: "Replied", emoji: "💬" },
+  no_reply: { label: "No reply", emoji: "🕐" },
+  meeting_booked: { label: "Meeting booked", emoji: "📅" },
+};
+
+type View = "drafts" | "tracker";
 type Filter = "all" | "outreach" | "coffee";
 
 export default function Dashboard() {
   const [history, setHistory] = useState<Generation[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [view, setView] = useState<View>("drafts");
   const [filter, setFilter] = useState<Filter>("all");
 
   useEffect(() => setHistory(loadHistory()), []);
 
-  function reset() {
-    clearHistory();
-    setHistory([]);
-  }
+  function reload() { setHistory(loadHistory()); }
 
   function copy(g: Generation) {
     const text = g.mode === "coffee" && g.prep ? prepToText(g.prep) : (g.message ?? "");
@@ -33,27 +51,53 @@ export default function Dashboard() {
     setTimeout(() => setCopiedId(null), 1500);
   }
 
-  // Stats (null-safe against older entries)
-  const total = history.length;
-  const byProject: Record<string, number> = {};
-  history.forEach((g) => {
-    if (g.matchedProject) byProject[g.matchedProject] = (byProject[g.matchedProject] || 0) + 1;
-  });
-  const topProject = Object.entries(byProject).sort((a, b) => b[1] - a[1])[0];
-  const coffeeCount = history.filter((g) => g.mode === "coffee").length;
-  const outreachCount = total - coffeeCount;
+  function handleMarkSent(id: string) {
+    markAsSent(id);
+    reload();
+  }
 
-  const shown = history.filter((g) => {
+  function handleCycleStatus(id: string) {
+    cycleStatus(id);
+    reload();
+  }
+
+  function handleDelete(id: string) {
+    deleteEntry(id);
+    reload();
+  }
+
+  function handleClearAll() {
+    clearHistory();
+    reload();
+  }
+
+  const total = history.length;
+  const sentItems = history.filter((g) => g.sent);
+  const repliedCount = sentItems.filter((g) => g.status === "replied" || g.status === "meeting_booked").length;
+
+  const drafts = history.filter((g) => {
     if (filter === "coffee") return g.mode === "coffee";
     if (filter === "outreach") return g.mode !== "coffee";
     return true;
   });
 
+  const tracked = sentItems.filter((g) => {
+    if (filter === "coffee") return g.mode === "coffee";
+    if (filter === "outreach") return g.mode !== "coffee";
+    return true;
+  });
+
+  const items = view === "drafts" ? drafts : tracked;
+
   return (
     <main className="wrap">
       <header className="masthead dash-head">
         <h1 className="dash-h1">Dashboard</h1>
-        <p className="lede">Every draft and chat prep you&apos;ve generated, and what the matcher keeps surfacing.</p>
+        <p className="lede">
+          {view === "drafts"
+            ? "Every draft and prep you've generated."
+            : "Track who you've reached out to and where things stand."}
+        </p>
       </header>
 
       {total === 0 ? (
@@ -66,66 +110,115 @@ export default function Dashboard() {
           <div className="stats">
             <div className="stat card">
               <span className="stat-num">{total}</span>
-              <span className="stat-label">total generated</span>
+              <span className="stat-label">drafts generated</span>
             </div>
             <div className="stat card">
-              <span className="stat-num">{topProject ? topProject[0] : "—"}</span>
-              <span className="stat-label">most-matched project</span>
+              <span className="stat-num">{sentItems.length}</span>
+              <span className="stat-label">marked as sent</span>
             </div>
             <div className="stat card">
-              <span className="stat-num">{outreachCount}<span className="stat-sub"> · {coffeeCount}</span></span>
-              <span className="stat-label">outreach · coffee</span>
+              <span className="stat-num">{repliedCount}</span>
+              <span className="stat-label">replied / booked</span>
             </div>
           </div>
 
-          <div className="history-head">
-            <div className="filter-tabs">
-              {(["all", "outreach", "coffee"] as Filter[]).map((f) => (
-                <button key={f} data-on={filter === f} onClick={() => setFilter(f)}>
-                  {f === "all" ? "All" : f === "outreach" ? "Outreach" : "Coffee"}
-                </button>
+          <div className="dash-controls">
+            <div className="view-toggle">
+              <button data-on={view === "drafts"} onClick={() => setView("drafts")}>
+                Drafts
+              </button>
+              <button data-on={view === "tracker"} onClick={() => setView("tracker")}>
+                Outreach Tracker
+              </button>
+            </div>
+
+            <div className="dash-right">
+              <div className="filter-tabs">
+                {(["all", "outreach", "coffee"] as Filter[]).map((f) => (
+                  <button key={f} data-on={filter === f} onClick={() => setFilter(f)}>
+                    {f === "all" ? "All" : f === "outreach" ? "Outreach" : "Coffee"}
+                  </button>
+                ))}
+              </div>
+              <button className="reset" onClick={handleClearAll}>Clear all</button>
+            </div>
+          </div>
+
+          {items.length === 0 ? (
+            <div className="card empty-state">
+              <p>
+                {view === "tracker"
+                  ? "No sent items yet. Mark a draft as sent to start tracking."
+                  : "No items match this filter."}
+              </p>
+            </div>
+          ) : (
+            <div className="history">
+              {items.map((g) => (
+                <div className="hist-card card" key={g.id}>
+                  <div className="hist-top">
+                    <div className="hist-top-left">
+                      <span className="chip sm">{g.matchedProject}</span>
+                      {g.sent && g.status && (
+                        <button
+                          className="status-badge"
+                          data-status={g.status}
+                          onClick={() => handleCycleStatus(g.id)}
+                          title="Click to cycle status"
+                        >
+                          {STATUS_LABELS[g.status]?.emoji} {STATUS_LABELS[g.status]?.label}
+                        </button>
+                      )}
+                    </div>
+                    <span className="hist-meta">
+                      {g.mode === "coffee" ? "☕" : "✉"}{" "}
+                      {g.recipientName && <strong>{g.recipientName}</strong>}
+                      {g.recipientName && " · "}
+                      {g.sent && g.sentAt
+                        ? `sent ${formatDate(g.sentAt)}`
+                        : timeAgo(g.createdAt)}
+                    </span>
+                  </div>
+
+                  <p className="hist-company">
+                    {g.companyText.slice(0, 140)}{g.companyText.length > 140 ? "…" : ""}
+                  </p>
+
+                  {g.mode === "coffee" && g.prep ? (
+                    <div className="prep-block">
+                      <p className="prep-opener">{g.prep.opener}</p>
+                      <div className="prep-list">
+                        <span className="prep-label">Talking points</span>
+                        <ul>{g.prep.talkingPoints.map((t, i) => <li key={i}>{t}</li>)}</ul>
+                      </div>
+                      <div className="prep-list">
+                        <span className="prep-label">Questions to ask</span>
+                        <ul>{g.prep.questions.map((q, i) => <li key={i}>{q}</li>)}</ul>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="draft">{g.message}</div>
+                  )}
+
+                  <div className="draft-actions">
+                    <div className="draft-actions-left">
+                      {!g.sent && (
+                        <button className="action-btn send-btn" onClick={() => handleMarkSent(g.id)}>
+                          Mark as sent
+                        </button>
+                      )}
+                      <button className="action-btn delete-btn" onClick={() => handleDelete(g.id)}>
+                        Delete
+                      </button>
+                    </div>
+                    <button className="copy" onClick={() => copy(g)}>
+                      {copiedId === g.id ? "Copied ✓" : g.mode === "coffee" ? "Copy prep" : "Copy draft"}
+                    </button>
+                  </div>
+                </div>
               ))}
             </div>
-            <button className="reset" onClick={reset}>Clear all</button>
-          </div>
-
-          <div className="history">
-            {shown.map((g) => (
-              <div className="hist-card card" key={g.id}>
-                <div className="hist-top">
-                  <span className="chip sm">{g.matchedProject}</span>
-                  <span className="hist-meta">
-                    {g.mode === "coffee" ? "☕ coffee chat" : `✉ ${g.channel}`} · {timeAgo(g.createdAt)}
-                  </span>
-                </div>
-                <p className="hist-company">
-                  {g.companyText.slice(0, 140)}{g.companyText.length > 140 ? "…" : ""}
-                </p>
-
-                {g.mode === "coffee" && g.prep ? (
-                  <div className="prep-block">
-                    <p className="prep-opener">{g.prep.opener}</p>
-                    <div className="prep-list">
-                      <span className="prep-label">Talking points</span>
-                      <ul>{g.prep.talkingPoints.map((t, i) => <li key={i}>{t}</li>)}</ul>
-                    </div>
-                    <div className="prep-list">
-                      <span className="prep-label">Questions to ask</span>
-                      <ul>{g.prep.questions.map((q, i) => <li key={i}>{q}</li>)}</ul>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="draft">{g.message}</div>
-                )}
-
-                <div className="draft-actions">
-                  <button className="copy" onClick={() => copy(g)}>
-                    {copiedId === g.id ? "Copied ✓" : g.mode === "coffee" ? "Copy prep" : "Copy draft"}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+          )}
         </>
       )}
     </main>

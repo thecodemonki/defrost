@@ -15,6 +15,9 @@ export type Generation = {
   message: string; // outreach draft, or a flattened text version of coffee prep (for copy)
   prep?: Prep;      // structured coffee-chat prep, when mode === "coffee"
   intent?: string;
+  sent?: boolean;
+  sentAt?: number;
+  status?: "sent" | "replied" | "no_reply" | "meeting_booked";
 };
 
 const KEY = "defrost:history";
@@ -49,4 +52,27 @@ export function prepToText(prep: Prep): string {
   if (prep.questions?.length)
     parts.push("Questions to ask:\n" + prep.questions.map((q) => `• ${q}`).join("\n"));
   return parts.join("\n\n");
+}
+
+export function markAsSent(id: string): void {
+  const all = loadHistory().map((g) =>
+    g.id === id ? { ...g, sent: true, sentAt: Date.now(), status: "sent" as const } : g
+  );
+  if (typeof window !== "undefined") localStorage.setItem(KEY, JSON.stringify(all));
+}
+
+export function cycleStatus(id: string): void {
+  const order: Generation["status"][] = ["sent", "replied", "no_reply", "meeting_booked"];
+  const all = loadHistory().map((g) => {
+    if (g.id !== id || !g.sent) return g;
+    const current = g.status || "sent";
+    const next = order[(order.indexOf(current) + 1) % order.length];
+    return { ...g, status: next };
+  });
+  if (typeof window !== "undefined") localStorage.setItem(KEY, JSON.stringify(all));
+}
+
+export function deleteEntry(id: string): void {
+  const next = loadHistory().filter((g) => g.id !== id);
+  if (typeof window !== "undefined") localStorage.setItem(KEY, JSON.stringify(next));
 }

@@ -326,7 +326,7 @@ textarea:focus, input:focus {
 
 .history { display: grid; gap: 14px; }
 .hist-card { margin-bottom: 0; }
-.hist-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.hist-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
 .hist-meta { font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint); }
 .hist-company { font-size: 13px; color: var(--ink-soft); margin: 0 0 14px; line-height: 1.5; }
 
@@ -530,3 +530,49 @@ textarea:focus, input:focus {
   background-repeat: no-repeat; background-position: right 9px center;
 }
 .tpl-select-sm:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+/* ---------- Dashboard controls ---------- */
+.dash-controls {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 12px; margin-bottom: 18px;
+}
+.dash-right { display: flex; align-items: center; gap: 10px; }
+
+.view-toggle {
+  display: inline-flex; background: var(--paper); border: 1px solid var(--line);
+  border-radius: 11px; padding: 3px; gap: 3px;
+}
+.view-toggle button {
+  font-family: var(--sans); font-size: 13px; font-weight: 500; border: none;
+  background: transparent; color: var(--ink-soft); padding: 8px 16px;
+  border-radius: 8px; cursor: pointer; transition: background 0.12s ease, color 0.12s ease;
+}
+.view-toggle button[data-on="true"] { background: var(--ink); color: #fff; }
+
+/* Status badge */
+.status-badge {
+  font-family: var(--mono); font-size: 11px; font-weight: 500;
+  border: 1px solid var(--line); background: var(--surface);
+  border-radius: 999px; padding: 3px 10px; cursor: pointer;
+  transition: all 0.12s ease;
+}
+.status-badge:hover { border-color: var(--accent); }
+.status-badge[data-status="sent"] { background: #f0f4ff; color: #3b5bdb; border-color: #d0d9f5; }
+.status-badge[data-status="replied"] { background: var(--match-soft); color: var(--match); border-color: #c3e6d1; }
+.status-badge[data-status="no_reply"] { background: #fff4e6; color: #e67700; border-color: #ffe0b2; }
+.status-badge[data-status="meeting_booked"] { background: #f3e8ff; color: #7c3aed; border-color: #ddd0f7; }
+
+/* History card layout */
+.hist-top-left { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.hist-meta strong { font-weight: 600; color: var(--ink); }
+
+/* Action buttons */
+.draft-actions-left { display: flex; gap: 8px; }
+.action-btn {
+  font-family: var(--mono); font-size: 11.5px; font-weight: 500;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink-soft);
+  border-radius: 8px; padding: 5px 11px; cursor: pointer;
+  transition: all 0.12s ease;
+}
+.send-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.delete-btn:hover { border-color: #e0b4b0; color: #b23b2e; background: #fdeeec; }
