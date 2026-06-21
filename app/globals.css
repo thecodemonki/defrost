@@ -437,3 +437,16 @@ textarea:focus, input:focus {
   color: var(--accent);
 }
 .prep-list.questions li::before { content: "?"; color: var(--warm); }
+
+/* ---------- Dashboard filter tabs ---------- */
+.filter-tabs { display: inline-flex; gap: 4px; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+.filter-tabs button {
+  font-size: 12.5px; font-weight: 500; border: none; background: transparent;
+  color: var(--ink-soft); padding: 6px 13px; border-radius: 7px; cursor: pointer;
+}
+.filter-tabs button[data-on="true"] { background: var(--ink); color: #fff; }
+
+.prep-opener {
+  background: var(--paper); border: 1px solid var(--line); border-radius: 12px;
+  padding: 14px 16px; font-size: 14px; line-height: 1.6; color: var(--ink); margin: 0;
+}
